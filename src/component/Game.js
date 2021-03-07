@@ -1,4 +1,4 @@
-﻿import React, { Component } from 'react';
+import React, { Component } from 'react';
 import PointTarget from 'react-point';
 
 class GameDisplay extends Component {
@@ -16,11 +16,16 @@ class GameDisplay extends Component {
 }
 
 class GameButton extends Component {
+    //This is required so we can pass a parameter to the function
+    _onPress() {
+        if (this.props.onPress) {
+            this.props.onPress(this.props.value);
+        }
+    }
     render() {
         const { onPress, className, ...props } = this.props
-
         return (
-            <PointTarget onPoint={onPress}>
+            <PointTarget onPoint={() => this._onPress()}>
                 <button className={`game-button ${className}`} {...props} />
             </PointTarget>
         )
@@ -32,10 +37,25 @@ class Game extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            elapsedTime: '0'
+            elapsedTime: 0,
+            rows: 5,
+            columns: 5,
+            size: 25
         };
+
+        this.createButtons();        
     }
 
+    createButtons() {
+        //Creating all the buttons in the constructor to avoid creating objects on every request
+        const allButtons = [];
+        let op = (cell) => this.clickButton(cell);
+        for (var i = 0; i < this.state.size; i++) {
+            console.log(i);
+            allButtons.push(<GameButton key={"btn-" + i} value={i} onPress={op}>{i}</GameButton>);
+        }
+        this.state.allButtons = allButtons;
+    }
 
     clickButton(cell) {
         const { elapsedTime } = this.state
@@ -44,36 +64,17 @@ class Game extends Component {
             })        
     }
 
-
     render() {
-        const { elapsedTime } = this.state;
-
+        const { elapsedTime, rows, columns, size, allButtons } = this.state;
+        let width = 80 * columns;
+        let height = 104 * rows;
         return (
-            <div id="game" className="game">
+            <div id="game" className="game" style={{ width: `${width}px`, height: `${height}px` }}>
                 <GameDisplay value={elapsedTime} />
                 <div className="game-board">
                     <div className="game-buttons">
-                        <GameButton onPress={() => this.clickButton(0)}>0</GameButton>
-                        <GameButton onPress={() => this.clickButton(1)}>1</GameButton>
-                        <GameButton onPress={() => this.clickButton(2)}>2</GameButton>
-                        <GameButton onPress={() => this.clickButton(3)}>3</GameButton>
-                        <GameButton onPress={() => this.clickButton(4)}>4</GameButton>
-                        <GameButton onPress={() => this.clickButton(5)}>5</GameButton>
-                        <GameButton onPress={() => this.clickButton(6)}>6</GameButton>
-                        <GameButton onPress={() => this.clickButton(7)}>7</GameButton>
-                        <GameButton onPress={() => this.clickButton(8)}>8</GameButton>
-                        <GameButton onPress={() => this.clickButton(9)}>9</GameButton>
-                        <GameButton onPress={() => this.clickButton(10)}>10</GameButton>
-                        <GameButton onPress={() => this.clickButton(11)}>11</GameButton>
-                        <GameButton onPress={() => this.clickButton(12)}>12</GameButton>
-                        <GameButton onPress={() => this.clickButton(13)}>13</GameButton>
-                        <GameButton onPress={() => this.clickButton(14)}>14</GameButton>
-                        <GameButton onPress={() => this.clickButton(15)}>15</GameButton>
-                        <GameButton onPress={() => this.clickButton(16)}>16</GameButton>
-                        <GameButton onPress={() => this.clickButton(17)}>17</GameButton>
-                        <GameButton onPress={() => this.clickButton(18)}>18</GameButton>
-                        <GameButton onPress={() => this.clickButton(19)}>19</GameButton>
-                        </div>
+                        {allButtons}
+                    </div>
                 </div>
             </div>)
     }
