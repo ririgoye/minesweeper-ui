@@ -54,25 +54,21 @@ class Game extends Component {
             size: 25,
             layout: "122101MM21135M301MMM01232",
             state: "HHHHHHHHHHHHHHHHHHHHHHHHH",
-            status: "STARTED",
+            status: "PAUSED",
             startTime: "2021-03-08T01:06:47.571142"
         };
         //"payload": { "id": 1, "userId": 1, "rows": 5, "columns": 5, "mines": 6, "layout": "122101MM21135M301MMM01232", "state": "HHHHHHHHHHHHHHHHHHHHHHHHH", "status": "STARTED", "startTime": "2021-03-08T01:06:47.571142", "elapsedTime": 0, "size": 25 }
         this.createButtons();  
     }
 
+    
     createButtons() {
         //Creating all the buttons in the constructor to avoid creating objects on every request
         const { size, layout, state } = this.state;
         const buttons = [];
         let op = (cell) => this.clickButton(cell);
         for (var i = 0; i < size; i++) {
-            let cellText = state[i];
-            if (cellText === ' ') {
-                cellText = layout[i];
-                if (cellText === '0')
-                    cellText = ' ';
-            }
+            let cellText = this.getCellText(i, state, layout);
             buttons.push(<GameButton key={"btn-" + i} value={i} onPress={op}>{cellText}</GameButton>);
         }
         console.log(buttons);
@@ -88,12 +84,7 @@ class Game extends Component {
         const { allButtons, size, state, layout } = this.state;
         let op = (cell) => this.clickButton(cell);
         for (var i = 0; i < size; i++) {
-            let cellText = state[i];
-            if (cellText === ' ') {
-                cellText = layout[i];
-                if (cellText === '0')
-                    cellText = ' ';
-            }
+            let cellText = this.getCellText(i, state, layout);
             let oldVal = allButtons[i].props.children;
             if (oldVal !== cellText) {
                 //it is not possible to modify button's text. We have to recreate the button instead
@@ -102,6 +93,19 @@ class Game extends Component {
         }
         //Refresh buttons
         this.setState(this.state);
+    }
+
+    getCellText(cell, state, layout) {
+        let cellText = state[cell];
+        if (cellText === ' ') {
+            //if the cell is visible/transparent show what's behind
+            cellText = layout[cell];
+            if (cellText === '0')
+                cellText = ' ';
+        }
+        else if (cellText === 'H')
+            cellText = ".";
+        return cellText;
     }
 
     clickButton(cell) {
@@ -127,6 +131,19 @@ class Game extends Component {
                 this.createButtons();
             })
             .catch(error => console.log('error', error));
+        
+    }
+    startTimer() {
+        if (this.timer === undefined)
+            this.timer = setTimeout(() => this.checkTimer(), 1000);
+    }
+
+    checkTimer() {
+        this.timer = undefined;
+        const { elapsedTime, status } = this.state;
+        this.setState({ elapsedTime: elapsedTime + 1 });
+        if (status === "STARTED")
+            this.startTimer();
     }
 
     clickCell(cell,action) {
@@ -160,6 +177,16 @@ class Game extends Component {
     }
 
     checkStartTime() {
+        const { startTime, status } = this.state;
+        if (status === "STARTED") {
+            let startDate = Date.parse(startTime);
+            let endDate = new Date();
+            let timeDiff = Math.floor((endDate - startDate) / 1000);
+            this.setState({ elapsedTime: timeDiff });
+            this.startTimer();
+        }
+        else
+            this.timer = undefined;
     }
 
     newGame() {
@@ -173,10 +200,9 @@ class Game extends Component {
     }
 
     render() {
-        const { elapsedTime, rows, columns, allButtons, layout } = this.state;
+        const { elapsedTime, rows, columns, allButtons } = this.state;
         let width = 80 * columns;
         let height = 104 * rows;
-        console.log("rendering: " + allButtons);
         return (
             <div id="game" className="game" style={{ width: `${width}px`, height: `${height}px` }}>
                 <GameDisplay value={elapsedTime} onNewGame={() => this.newGame()} onPauseGame={() => this.pauseGame()} />
