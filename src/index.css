@@ -42,7 +42,7 @@ button:active {
 }
 
 #wrapper {
-  height: 100vh;
+  height: 90vh;
   
   display: flex;
   align-items: center;
@@ -72,9 +72,10 @@ button:active {
     flex-direction: row;
 }
 
-.game-display .game-displayitem {
-    flex: 1;
-}
+    .game-display .game-displayitem {
+        border-right: 1px solid #666;
+        flex: 1;
+    }
 
 .game-board {
   display: flex;

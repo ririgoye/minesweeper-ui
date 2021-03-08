@@ -3,20 +3,59 @@ import PointTarget from 'react-point';
 
 class GameDisplay extends Component {
     render() {
-        const { onNewGame, onPauseGame, value, ...props } = this.props
-
+        const { onNewGame, onPauseGame, onToogleFlag, value, status, showFlag, ...props } = this.props
+        let face = status === "WON" ? "=)" : "=(";
+        let gameDone = status === "WON" || status === "LOST";
+        let showNew = status === "" || gameDone;
+        let showPlay = status !== "STARTED";
         return (
             <div {...props} className="game-display">
                 <div className="game-displayitem">
-                    <PointTarget onPoint={onNewGame}>
-                        <label tag="New Game">+</label>
-                    </PointTarget>
+                    {showNew && (
+                        <PointTarget onPoint={onNewGame}>
+                            <label tag="New Game">+</label>
+                        </PointTarget>
+                    )}
+                    {!showNew && (
+                        <PointTarget onPoint={onNewGame}>
+                            <label title="Restart Game" style={{ position: `relative`, bottom: `10px` }}>«</label>
+                        </PointTarget>
+                    )}
                 </div>
                 <div className="game-displayitem">{value}</div>
-                <div className="game-displayitem">
-                    <PointTarget onPoint={onPauseGame}>
-                        <label tag="Pause Game">||</label>
-                    </PointTarget></div>                
+                {!showNew && (
+                    <div className="game-displayitem">
+                        {!showPlay && (
+                            <PointTarget onPoint={onPauseGame}>
+                                <label title="Pause Game" style={{ position: `relative`, bottom: `10px` }}>■</label>
+                            </PointTarget>
+                        )}
+                        {showPlay && (
+                            <PointTarget onPoint={onPauseGame}>
+                                <label title="Continue Game">&gt;</label>
+                            </PointTarget>
+                        )}
+                    </div>
+                )}
+                {!showNew && (
+                    <div className="game-displayitem">
+                        {showFlag && (
+                            <PointTarget onPoint={onToogleFlag}>
+                                <label title="Place flags">F</label>
+                            </PointTarget>
+                        )}
+                        {!showFlag && (
+                            <PointTarget onPoint={onToogleFlag}>
+                                <label title="Click cell">X</label>
+                            </PointTarget>
+                        )}
+                    </div>
+                )}
+                {gameDone && (
+                    <div className="game-displayitem">
+                        <label>{face}</label>
+                    </div>
+                )}
             </div>
         )
     }
@@ -52,16 +91,18 @@ class Game extends Component {
             columns: 5,
             mines: 6,
             size: 25,
-            layout: "122101MM21135M301MMM01232",
-            state: "HHHHHHHHHHHHHHHHHHHHHHHHH",
-            status: "PAUSED",
-            startTime: "2021-03-08T01:06:47.571142"
+            layout: "",
+            state: "",
+            status: "",
+            startTime: "",
+            localElapsedTime: 0,
+            showFlag: false
         };
         //"payload": { "id": 1, "userId": 1, "rows": 5, "columns": 5, "mines": 6, "layout": "122101MM21135M301MMM01232", "state": "HHHHHHHHHHHHHHHHHHHHHHHHH", "status": "STARTED", "startTime": "2021-03-08T01:06:47.571142", "elapsedTime": 0, "size": 25 }
-        this.createButtons();  
+        this.createButtons();
     }
 
-    
+
     createButtons() {
         //Creating all the buttons in the constructor to avoid creating objects on every request
         const { size, layout, state } = this.state;
@@ -88,7 +129,7 @@ class Game extends Component {
             let oldVal = allButtons[i].props.children;
             if (oldVal !== cellText) {
                 //it is not possible to modify button's text. We have to recreate the button instead
-                allButtons[i] =  <GameButton key={"btn-" + i} value={i} onPress={op}>{cellText}</GameButton>
+                allButtons[i] = <GameButton key={"btn-" + i} value={i} onPress={op}>{cellText}</GameButton>
             }
         }
         //Refresh buttons
@@ -109,7 +150,8 @@ class Game extends Component {
     }
 
     clickButton(cell) {
-        this.clickCell(cell, "CLICK");
+        const { showFlag } = this.state;        
+        this.sendAction(cell, showFlag?"FLAG":"CLICK");
     }
 
     createGame() {
@@ -123,31 +165,34 @@ class Game extends Component {
             redirect: 'follow'
         };
 
-        fetch(process.env.REACT_APP_API_HOST +"/api/v1/games", requestOptions)
+        fetch(process.env.REACT_APP_API_HOST + "/api/v1/games", requestOptions)
             .then(response => response.text())
             .then(result => {
-                this.loadGameBoard(result);
+                this.loadGameBoard(result,true);
                 //Create new buttons
                 this.createButtons();
             })
             .catch(error => console.log('error', error));
-        
+
     }
     startTimer() {
-        if (this.timer === undefined)
+        if (this.timer === undefined) {
             this.timer = setTimeout(() => this.checkTimer(), 1000);
+        }
     }
 
     checkTimer() {
         this.timer = undefined;
-        const { elapsedTime, status } = this.state;
-        this.setState({ elapsedTime: elapsedTime + 1 });
-        if (status === "STARTED")
+        const { localElapsedTime, status } = this.state;
+        if (status === "STARTED") {
+            //We have a separate elapsed time because, directly using the one from the server, will make the timer flicker.
+            this.setState({ localElapsedTime: localElapsedTime + 1 });
             this.startTimer();
+        }
     }
 
-    clickCell(cell,action) {
-        const {id} = this.state;
+    sendAction(cell, action) {
+        const { id } = this.state;
 
         var myHeaders = new Headers();
         myHeaders.append("Content-Type", "application/json");
@@ -159,34 +204,36 @@ class Game extends Component {
             redirect: 'follow'
         };
 
-        fetch(process.env.REACT_APP_API_HOST+"/api/v1/games/" + id +"/action", requestOptions)
+        fetch(process.env.REACT_APP_API_HOST + "/api/v1/games/" + id + "/action", requestOptions)
             .then(response => response.text())
             .then(result => {
-                this.loadGameBoard(result);
+                this.loadGameBoard(result,false);
                 //Modify text in existing buttons
                 this.updateButtons();
             })
             .catch(error => console.log('error', error));
     }
 
-    loadGameBoard(result) {
+    loadGameBoard(result, resetTimer) {
         let response = JSON.parse(result);
         let payload = response.payload;
+        if (resetTimer) {
+            payload.localElapsedTime = 0;
+        }
         this.setState(payload);
         this.checkStartTime();
     }
 
     checkStartTime() {
-        const { startTime, status } = this.state;
+        const { status, elapsedTime } = this.state;
         if (status === "STARTED") {
-            let startDate = Date.parse(startTime);
-            let endDate = new Date();
-            let timeDiff = Math.floor((endDate - startDate) / 1000);
-            this.setState({ elapsedTime: timeDiff });
             this.startTimer();
         }
-        else
+        else {
+            //Stop the timer
+            this.setState({ localElapsedTime: elapsedTime });
             this.timer = undefined;
+        }
     }
 
     newGame() {
@@ -195,17 +242,29 @@ class Game extends Component {
     }
 
     pauseGame() {
-        console.log("pause game");
-        this.createButtons();
+        const { status } = this.state;
+        if (status === "STARTED")
+            this.sendAction(0, "PAUSE");
+        else
+            this.sendAction(0, "RESUME");
+    }
+
+    toogleFlag() {
+        const { showFlag } = this.state;
+        this.setState({ showFlag: !showFlag });
     }
 
     render() {
-        const { elapsedTime, rows, columns, allButtons } = this.state;
+        const { localElapsedTime, rows, columns, allButtons, status, showFlag } = this.state;
         let width = 80 * columns;
         let height = 104 * rows;
         return (
             <div id="game" className="game" style={{ width: `${width}px`, height: `${height}px` }}>
-                <GameDisplay value={elapsedTime} onNewGame={() => this.newGame()} onPauseGame={() => this.pauseGame()} />
+                <GameDisplay value={localElapsedTime} status={status} showFlag={showFlag}
+                    onNewGame={() => this.newGame()}
+                    onPauseGame={() => this.pauseGame()}
+                    onToogleFlag={() => this.toogleFlag()}
+                />
                 <div className="game-board">
                     <div className="game-buttons">
                         {allButtons}
