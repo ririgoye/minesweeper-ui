@@ -78,6 +78,41 @@ class GameButton extends Component {
     }
 }
 
+class NumSelector extends Component {
+    constructor(props) {
+        super(props);
+        let options = [];
+        for (var i = props.min; i < props.max; i++) {
+            options.push(<option key={"k-" + i} value={i}>{i}</option>)
+        }
+        this.state = {
+            min: props.min,
+            max: props.max,
+            value: props.value,
+            options: options
+        }
+        this.handleChange = this.handleChange.bind(this);
+    }
+
+    handleChange(event) {
+        let val = event.target.value
+        console.log("val changed" + val);
+        if (this.props.onChange) {
+            this.props.onChange(val);
+        }
+        this.setState({ value: val });
+    }
+
+    render() {
+        const { options } = this.state;
+        return (
+            <select value={this.state.value} onChange={this.handleChange}>
+                {options}
+            </select>
+        )
+    }
+}
+
 
 class Game extends Component {
     constructor(props) {
@@ -87,9 +122,11 @@ class Game extends Component {
             id: 0,
             userId: props.userId,
             elapsedTime: 0,
-            rows: 5,
-            columns: 5,
-            mines: 6,
+            rows: 6,
+            columns: 6,
+            ddRows: 6,
+            ddColumns: 6,
+            mines: 7,
             size: 25,
             layout: "",
             state: "",
@@ -100,6 +137,9 @@ class Game extends Component {
         };
         //"payload": { "id": 1, "userId": 1, "rows": 5, "columns": 5, "mines": 6, "layout": "122101MM21135M301MMM01232", "state": "HHHHHHHHHHHHHHHHHHHHHHHHH", "status": "STARTED", "startTime": "2021-03-08T01:06:47.571142", "elapsedTime": 0, "size": 25 }
         this.loadLastGame();
+
+        this.rowsChanged = this.rowsChanged.bind(this);
+        this.colsChanged = this.colsChanged.bind(this);
     }
 
 
@@ -155,10 +195,14 @@ class Game extends Component {
     }
 
     createGame() {
-        const { id, userId } = this.state;
+        //Using the rows and columns from the dropdowns. The real row/columns from state will be updated on the callback
+        const { userId, ddRows, ddColumns } = this.state;
+        //mines are fixed to %20 of the board
+        let mines = Math.floor(ddRows * ddColumns * .2);
+
         var myHeaders = new Headers();
         myHeaders.append("Content-Type", "application/json");
-        var raw = JSON.stringify({ "userId": userId, "rows": 6, "columns": 6, "mines": 6 });
+        var raw = JSON.stringify({ "userId": userId, "rows": ddRows, "columns": ddColumns, "mines": mines });
         var requestOptions = {
             method: 'POST',
             headers: myHeaders,
@@ -284,11 +328,35 @@ class Game extends Component {
         this.setState({ showFlag: !showFlag });
     }
 
+    toogleFlag() {
+        const { showFlag } = this.state;
+        this.setState({ showFlag: !showFlag });
+    }
+
+    rowsChanged(rows) {
+        console.log("rows changed" + rows);
+        //We just store the value to be used on new game
+        this.setState({ ddRows: rows });
+    }
+
+    colsChanged(cols) {
+        console.log("cols changed" + cols);
+        //We just store the value to be used on new game
+        this.setState({ddColumns: cols });
+    }
+
+
     render() {
         const { localElapsedTime, rows, columns, allButtons, status, showFlag } = this.state;
         let width = 80 * columns;
-        let height = 104 * rows;
+        let height = 80 * rows + 130;
         return (
+            <div>
+                <div className="dimentions" id="dimentions">
+                    <label> Rows:    <NumSelector min={5} max={15} value={5} onChange={this.rowsChanged} />
+                        Columns:    <NumSelector min={5} max={15} value={5} onChange={this.colsChanged} />
+                    </label>
+            </div>
             <div id="game" className="game" style={{ width: `${width}px`, height: `${height}px` }}>
                 <GameDisplay value={localElapsedTime} status={status} showFlag={showFlag}
                     onNewGame={() => this.newGame()}
@@ -298,6 +366,7 @@ class Game extends Component {
                 <div className="game-board">
                     <div className="game-buttons">
                         {allButtons}
+                    </div>
                     </div>
                 </div>
             </div>)

@@ -52,7 +52,6 @@ class AppHeader extends Component {
                 <div>
                     <h1 className="App-title">Minesweeper UI</h1>
                     <div id='forms' className="App-intro">
-
                         <form onSubmit={this.handleSubmit}>
                             <label>
                                 UserName:&nbsp;
@@ -62,6 +61,11 @@ class AppHeader extends Component {
                             </label>&nbsp;
                             <input id="login" type="submit" value="Login/SignUp" />
                         </form>
+                        <p>
+                            Enter a username and password to begin<br/>
+                            Click on X/F to change from flagging to clicking.<br />
+                            + = new game, ? = pause , &gt;= resume
+                        </p>
                     </div>
                 </div>
             </React.Fragment>
