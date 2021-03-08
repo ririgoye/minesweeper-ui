@@ -84,8 +84,8 @@ class Game extends Component {
         super(props);
         this.state = {
             allButtons: [],
-            id: 1,
-            userId: 1,
+            id: 0,
+            userId: props.userId,
             elapsedTime: 0,
             rows: 5,
             columns: 5,
@@ -99,7 +99,7 @@ class Game extends Component {
             showFlag: false
         };
         //"payload": { "id": 1, "userId": 1, "rows": 5, "columns": 5, "mines": 6, "layout": "122101MM21135M301MMM01232", "state": "HHHHHHHHHHHHHHHHHHHHHHHHH", "status": "STARTED", "startTime": "2021-03-08T01:06:47.571142", "elapsedTime": 0, "size": 25 }
-        this.createButtons();
+        this.loadLastGame();
     }
 
 
@@ -155,9 +155,10 @@ class Game extends Component {
     }
 
     createGame() {
+        const { id, userId } = this.state;
         var myHeaders = new Headers();
         myHeaders.append("Content-Type", "application/json");
-        var raw = JSON.stringify({ "userId": 1, "rows": 6, "columns": 6, "mines": 6 });
+        var raw = JSON.stringify({ "userId": userId, "rows": 6, "columns": 6, "mines": 6 });
         var requestOptions = {
             method: 'POST',
             headers: myHeaders,
@@ -168,13 +169,34 @@ class Game extends Component {
         fetch(process.env.REACT_APP_API_HOST + "/api/v1/games", requestOptions)
             .then(response => response.text())
             .then(result => {
-                this.loadGameBoard(result,true);
+                this.loadGameBoard(result, "YES");
                 //Create new buttons
                 this.createButtons();
             })
             .catch(error => console.log('error', error));
-
     }
+
+    loadLastGame() {
+        const { userId } = this.state;        
+        var myHeaders = new Headers();
+        myHeaders.append("Content-Type", "application/json");
+        var requestOptions = {
+            method: 'GET',
+            headers: myHeaders,
+            body: null,
+            redirect: 'follow'
+        };
+
+        fetch(process.env.REACT_APP_API_HOST + "/api/v1/users/" + userId+"/lastgame", requestOptions)
+            .then(response => response.text())
+            .then(result => {
+                this.loadGameBoard(result, "API");
+                //Create new buttons
+                this.createButtons();
+            })
+            .catch(error => console.log('error', error));
+    }
+
     startTimer() {
         if (this.timer === undefined) {
             this.timer = setTimeout(() => this.checkTimer(), 1000);
@@ -192,11 +214,11 @@ class Game extends Component {
     }
 
     sendAction(cell, action) {
-        const { id } = this.state;
+        const { id, userId } = this.state;
 
         var myHeaders = new Headers();
         myHeaders.append("Content-Type", "application/json");
-        var raw = JSON.stringify({ "userId": 1, "action": action, "cell": cell });
+        var raw = JSON.stringify({ "userId": userId , "action": action, "cell": cell });
         var requestOptions = {
             method: 'POST',
             headers: myHeaders,
@@ -207,7 +229,7 @@ class Game extends Component {
         fetch(process.env.REACT_APP_API_HOST + "/api/v1/games/" + id + "/action", requestOptions)
             .then(response => response.text())
             .then(result => {
-                this.loadGameBoard(result,false);
+                this.loadGameBoard(result, "NO");
                 //Modify text in existing buttons
                 this.updateButtons();
             })
@@ -217,8 +239,16 @@ class Game extends Component {
     loadGameBoard(result, resetTimer) {
         let response = JSON.parse(result);
         let payload = response.payload;
-        if (resetTimer) {
-            payload.localElapsedTime = 0;
+
+        switch (resetTimer) {
+            case "YES":
+            case "ZERO":
+                payload.localElapsedTime = 0;
+                break;
+            case "API":
+                //get timer from api response
+                payload.localElapsedTime = payload.elapsedTime;
+                break;
         }
         this.setState(payload);
         this.checkStartTime();
