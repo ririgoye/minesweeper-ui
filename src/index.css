@@ -77,7 +77,6 @@ button:active {
 }
 
 .game-board {
-  height: 400px;  
   display: flex;
 }
 
