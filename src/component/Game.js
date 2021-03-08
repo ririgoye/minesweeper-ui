@@ -44,6 +44,7 @@ class Game extends Component {
     constructor(props) {
         super(props);
         this.state = {
+            allButtons: [],
             id: 1,
             userId: 1,
             elapsedTime: 0,
@@ -57,7 +58,7 @@ class Game extends Component {
             startTime: "2021-03-08T01:06:47.571142"
         };
         //"payload": { "id": 1, "userId": 1, "rows": 5, "columns": 5, "mines": 6, "layout": "122101MM21135M301MMM01232", "state": "HHHHHHHHHHHHHHHHHHHHHHHHH", "status": "STARTED", "startTime": "2021-03-08T01:06:47.571142", "elapsedTime": 0, "size": 25 }
-        this.createButtons();        
+        this.createButtons();  
     }
 
     createButtons() {
@@ -67,18 +68,19 @@ class Game extends Component {
         let op = (cell) => this.clickButton(cell);
         for (var i = 0; i < size; i++) {
             let cellText = state[i];
-            if (cellText == ' ') {
+            if (cellText === ' ') {
                 cellText = layout[i];
-                if (cellText == '0')
+                if (cellText === '0')
                     cellText = ' ';
             }
             buttons.push(<GameButton key={"btn-" + i} value={i} onPress={op}>{cellText}</GameButton>);
         }
         console.log(buttons);
-        if (this.state.allButtons)
-            this.setState({ allButtons: buttons });
-        else
-            this.state.allButtons = buttons;
+        //This is not working on new games
+        this.setState({ allButtons: buttons });
+        //this.state.allButtons = buttons;
+        console.log(this.state.allButtons);
+        this.setState(this.state);
     }
 
 
@@ -87,14 +89,14 @@ class Game extends Component {
         let op = (cell) => this.clickButton(cell);
         for (var i = 0; i < size; i++) {
             let cellText = state[i];
-            if (cellText == ' ') {
+            if (cellText === ' ') {
                 cellText = layout[i];
-                if (cellText == '0')
+                if (cellText === '0')
                     cellText = ' ';
             }
             let oldVal = allButtons[i].props.children;
-            if (oldVal != cellText) {
-                console.log(oldVal + " " + cellText);
+            if (oldVal !== cellText) {
+                //it is not possible to modify button's text. We have to recreate the button instead
                 allButtons[i] =  <GameButton key={"btn-" + i} value={i} onPress={op}>{cellText}</GameButton>
             }
         }
@@ -117,7 +119,7 @@ class Game extends Component {
             redirect: 'follow'
         };
 
-        fetch("http://localhost:8080/api/v1/games", requestOptions)
+        fetch(process.env.REACT_APP_API_HOST +"/api/v1/games", requestOptions)
             .then(response => response.text())
             .then(result => {
                 this.loadGameBoard(result);
@@ -133,7 +135,6 @@ class Game extends Component {
         var myHeaders = new Headers();
         myHeaders.append("Content-Type", "application/json");
         var raw = JSON.stringify({ "userId": 1, "action": action, "cell": cell });
-        console.log(raw);
         var requestOptions = {
             method: 'POST',
             headers: myHeaders,
@@ -141,7 +142,7 @@ class Game extends Component {
             redirect: 'follow'
         };
 
-        fetch("http://localhost:8080/api/v1/games/" + id +"/action", requestOptions)
+        fetch(process.env.REACT_APP_API_HOST+"/api/v1/games/" + id +"/action", requestOptions)
             .then(response => response.text())
             .then(result => {
                 this.loadGameBoard(result);
@@ -172,11 +173,10 @@ class Game extends Component {
     }
 
     render() {
-        const { elapsedTime, rows, columns, size, allButtons, layout } = this.state;
-        console.log(layout);
+        const { elapsedTime, rows, columns, allButtons, layout } = this.state;
         let width = 80 * columns;
         let height = 104 * rows;
-        console.log(allButtons);
+        console.log("rendering: " + allButtons);
         return (
             <div id="game" className="game" style={{ width: `${width}px`, height: `${height}px` }}>
                 <GameDisplay value={elapsedTime} onNewGame={() => this.newGame()} onPauseGame={() => this.pauseGame()} />
