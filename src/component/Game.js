@@ -1,3 +1,4 @@
+import { re } from 'mathjs';
 import React, { Component } from 'react';
 import PointTarget from 'react-point';
 
@@ -150,7 +151,8 @@ class Game extends Component {
         let op = (cell) => this.clickButton(cell);
         for (var i = 0; i < size; i++) {
             let cellText = this.getCellText(i, state, layout);
-            buttons.push(<GameButton key={"btn-" + i} value={i} onPress={op}>{cellText}</GameButton>);
+            let className = this.getCellClass(cellText);
+            buttons.push(<GameButton key={"btn-" + i} value={i} onPress={op} className={className}>{cellText}</GameButton>);
         }
         console.log(buttons);
         //This is not working on new games
@@ -169,7 +171,8 @@ class Game extends Component {
             let oldVal = allButtons[i].props.children;
             if (oldVal !== cellText) {
                 //it is not possible to modify button's text. We have to recreate the button instead
-                allButtons[i] = <GameButton key={"btn-" + i} value={i} onPress={op}>{cellText}</GameButton>
+                let className = this.getCellClass(cellText);
+                allButtons[i] = <GameButton key={"btn-" + i} value={i} onPress={op} className={className}>{cellText}</GameButton>
             }
         }
         //Refresh buttons
@@ -182,16 +185,29 @@ class Game extends Component {
             //if the cell is visible/transparent show what's behind
             cellText = layout[cell];
             if (cellText === '0')
-                cellText = ' ';
+                cellText = '';
         }
         else if (cellText === 'H')
-            cellText = ".";
+            cellText = ' ';
         return cellText;
     }
 
+    getCellClass(cellText) {
+        switch (cellText) {
+            case ' ': //hidden cell (not clicked)
+                return "";
+            case 'F':
+                return "flag-cell";
+            case 'X':
+                return "mine-cell";
+            default:
+                return "clicked-cell";
+        }
+    }
+
     clickButton(cell) {
-        const { showFlag } = this.state;        
-        this.sendAction(cell, showFlag?"FLAG":"CLICK");
+        const { showFlag } = this.state;
+        this.sendAction(cell, showFlag ? "FLAG" : "CLICK");
     }
 
     createGame() {
@@ -221,7 +237,7 @@ class Game extends Component {
     }
 
     loadLastGame() {
-        const { userId } = this.state;        
+        const { userId } = this.state;
         var myHeaders = new Headers();
         myHeaders.append("Content-Type", "application/json");
         var requestOptions = {
@@ -231,7 +247,7 @@ class Game extends Component {
             redirect: 'follow'
         };
 
-        fetch(process.env.REACT_APP_API_HOST + "/api/v1/users/" + userId+"/lastgame", requestOptions)
+        fetch(process.env.REACT_APP_API_HOST + "/api/v1/users/" + userId + "/lastgame", requestOptions)
             .then(response => response.text())
             .then(result => {
                 this.loadGameBoard(result, "API");
@@ -258,11 +274,11 @@ class Game extends Component {
     }
 
     sendAction(cell, action) {
-        const { id, userId } = this.state;
+        const { id, userId, status } = this.state;
 
         var myHeaders = new Headers();
         myHeaders.append("Content-Type", "application/json");
-        var raw = JSON.stringify({ "userId": userId , "action": action, "cell": cell });
+        var raw = JSON.stringify({ "userId": userId, "action": action, "cell": cell });
         var requestOptions = {
             method: 'POST',
             headers: myHeaders,
@@ -273,26 +289,29 @@ class Game extends Component {
         fetch(process.env.REACT_APP_API_HOST + "/api/v1/games/" + id + "/action", requestOptions)
             .then(response => response.text())
             .then(result => {
-                this.loadGameBoard(result, "NO");
+                this.loadGameBoard(result, "", status);
                 //Modify text in existing buttons
                 this.updateButtons();
             })
             .catch(error => console.log('error', error));
     }
 
-    loadGameBoard(result, resetTimer) {
+    loadGameBoard(result, resetTimer, status) {
         let response = JSON.parse(result);
         let payload = response.payload;
 
         switch (resetTimer) {
             case "YES":
-            case "ZERO":
                 payload.localElapsedTime = 0;
                 break;
             case "API":
                 //get timer from api response
                 payload.localElapsedTime = payload.elapsedTime;
                 break;
+            default:
+                //If the game is paused, sending a click would resume the game. We need to check for that case
+                if (payload.status==="STARTED" && status==="PAUSED")
+                    payload.localElapsedTime = payload.elapsedTime;
         }
         this.setState(payload);
         this.checkStartTime();
@@ -342,31 +361,32 @@ class Game extends Component {
     colsChanged(cols) {
         console.log("cols changed" + cols);
         //We just store the value to be used on new game
-        this.setState({ddColumns: cols });
+        this.setState({ ddColumns: cols });
     }
 
 
     render() {
         const { localElapsedTime, rows, columns, allButtons, status, showFlag } = this.state;
         let width = 80 * columns;
-        let height = 80 * rows + 130;
+        let height = 80 * rows + 148;
         return (
             <div>
-                <div className="dimentions" id="dimentions">
-                    <label> Rows:    <NumSelector min={5} max={15} value={5} onChange={this.rowsChanged} />
-                        Columns:    <NumSelector min={5} max={15} value={5} onChange={this.colsChanged} />
+                <div id="game" className="game" style={{ width: `${width}px`, height: `${height}px`, marginTop: `${5}px` }}>
+                    <label>
+                        Rows:&nbsp;<NumSelector min={5} max={15} value={5} onChange={this.rowsChanged} />
+                        &nbsp;&nbsp;
+                        Columns:&nbsp;<NumSelector min={5} max={15} value={5} onChange={this.colsChanged} />
+                        <br />
                     </label>
-            </div>
-            <div id="game" className="game" style={{ width: `${width}px`, height: `${height}px` }}>
-                <GameDisplay value={localElapsedTime} status={status} showFlag={showFlag}
-                    onNewGame={() => this.newGame()}
-                    onPauseGame={() => this.pauseGame()}
-                    onToogleFlag={() => this.toogleFlag()}
-                />
-                <div className="game-board">
-                    <div className="game-buttons">
-                        {allButtons}
-                    </div>
+                    <GameDisplay value={localElapsedTime} status={status} showFlag={showFlag}
+                        onNewGame={() => this.newGame()}
+                        onPauseGame={() => this.pauseGame()}
+                        onToogleFlag={() => this.toogleFlag()}
+                    />
+                    <div className="game-board">
+                        <div className="game-buttons">
+                            {allButtons}
+                        </div>
                     </div>
                 </div>
             </div>)

@@ -96,6 +96,19 @@ button:active {
   text-align: center;
   line-height: 80px;
 }
+
+    .game-button.flag-cell {
+        background: #00ee00;
+    }
+
+.game-button.mine-cell {
+    background: #ee0000;
+}
+
+.game-button.clicked-cell {
+    background: #fefefe;
+}
+
 .game .game-buttons .game-button {
   font-size: 2.25em;
 }

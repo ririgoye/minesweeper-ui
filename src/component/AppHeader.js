@@ -51,20 +51,20 @@ class AppHeader extends Component {
             <React.Fragment>
                 <div>
                     <h1 className="App-title">Minesweeper UI</h1>
+                    <label>Enter a username and password to begin</label>
                     <div id='forms' className="App-intro">
                         <form onSubmit={this.handleSubmit}>
                             <label>
                                 UserName:&nbsp;
-                                <input type="text" value={this.state.userName} onChange={this.handleUChange} size={8} />
+                                <input type="text" value={this.state.userName} onChange={this.handleUChange} size={8} />&nbsp;&nbsp;
                                 Password:&nbsp;
                                 <input type="password" value={this.state.password} onChange={this.handlePChange} size={8} />
-                            </label>&nbsp;
+                            </label>&nbsp;&nbsp;
                             <input id="login" type="submit" value="Login/SignUp" />
                         </form>
                         <p>
-                            Enter a username and password to begin<br/>
-                            Click on X/F to change from flagging to clicking.<br />
-                            + = new game, ? = pause , &gt;= resume
+                            Click on X/F to change from "flag" to "click".<br />
+                            + = new game, ■ = pause , &gt;= resume
                         </p>
                     </div>
                 </div>
